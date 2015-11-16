@@ -81,7 +81,7 @@ int SockWall::loadWin()
             //getchar();
             file.read(window[idx].getDataPtr()+HEADER_LEN,PKT_SIZE-HEADER_LEN);
 
-            int size= file.gcount();
+	    std::streamsize size= file.gcount();
             std::cout<<"got "<<size <<" characters"<<std::endl;
             //getchar();
             window[idx].setContentSize(size);
@@ -89,7 +89,10 @@ int SockWall::loadWin()
             //seq_num++;
             window[idx].setOffset(file_pos);
             window[idx].setStat(loaded);
-            file_pos+=size;
+            //file_pos+=size;
+	    file_pos=file.tellg();
+	    std::cout << "file_pos:\t"<<file_pos << "\n";
+	    std::cout << "file_length:\t"<<file_length << "\n";
             if(file_pos==file_length){
                 //if reach the end of the file
                 std::cout<<"Reaching to end of file."<<std::endl;
