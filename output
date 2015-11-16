@@ -1,0 +1,283 @@
+diff --git a/RoutingProtocolImpl.cc b/RoutingProtocolImpl.cc
+index e831f83..943b8a0 100644
+--- a/RoutingProtocolImpl.cc
++++ b/RoutingProtocolImpl.cc
+@@ -27,6 +27,7 @@ void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_i
+ 
+     fwdtable.set_protocol(protocol_type);
+     fwdtable.set_router_id(router_id);
++    fwdtable.set_series_num_zero();
+ 
+     //set up ping alarm
+     AlarmType *d=(AlarmType *)malloc(sizeof(AlarmType));
+@@ -40,7 +41,11 @@ void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_i
+ 
+     //set up DV alarm
+     d=(AlarmType *)malloc(sizeof(AlarmType));
+-    *d=periodic_DV;
++    if(protocol_type==P_DV)
++        *d=periodic_DV;
++    else{
++        *d=periodic_LS;
++    }
+     sys->set_alarm(this,30*1000,d);
+ }
+ 
+@@ -61,15 +66,22 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
+         break;
+     }
+     case periodic_DV:
++    case periodic_LS:
+     {
+         sys->set_alarm(this,30*1000,data);
+-        unsigned short pktsize,ID;
+-        char* pkt;
+-        for(int i=0;i<porttable.size();i++){
+-            if(!porttable.port2ID(i,ID))
+-                continue;
+-            pkt=(char*)fwdtable.make_pkt_DV(ID,pktsize);
+-            sys->send(i,pkt,pktsize);
++        if(ptcl==P_DV){
++            unsigned short pktsize,ID;
++            char* pkt;
++            for(int i=0;i<porttable.size();i++){
++                if(!porttable.port2ID(i,ID))
++                    continue;
++                pkt=(char*)fwdtable.make_pkt_DV(ID,pktsize);
++                sys->send(i,pkt,pktsize);
++            }
++        }
++        else{
++            //else case, ptcl==P_LS, make LS packet and send to all ports=================================================================================================
++
+         }
+         break;
+     }
+@@ -88,14 +100,28 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
+         }
+         else{
+             //check P_LS
++            fwdtable.inc_tstamp_LS();
++            if(fwdtable.check_LS()){
++                //if fwdtable changed, regenerate shortest path
++                fwdtable.SP_regenerate();
++            }
+         }
+         //check port table
+         porttable.inc_tstamp();
+         if(porttable.check(change_list)){
+             //if there is something changed in the porttable
+             while(!change_list.empty()){
+-                unsigned short outdatedID=change_list.front();
+-                if(fwdtable.try_update(outdatedID,USHRT_MAX,0,outdatedID)){
++                if(ptcl==P_DV){
++                    //if ptcl is DV
++                    unsigned short outdatedID=change_list.front();
++                    if(fwdtable.try_update(outdatedID,USHRT_MAX,0,outdatedID)){
++                        changed=true;
++                    }
++                }
++                else{
++                    //ptcl is LS
++                    //try_update_LS in fwdtable, remove all invalid neighbors=======================================================================================
++
+                     changed=true;
+                 }
+                 change_list.pop();
+@@ -103,13 +129,21 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
+         }
+         if(changed){
+             //if fwdtable changed, send newest table
+-            unsigned short pktsize,ID;
+-            char* pkt;
+-            for(int i=0;i<porttable.size();i++){
+-                if(!porttable.port2ID(i,ID))
+-                    continue;
+-                pkt=(char*)fwdtable.make_pkt_DV(ID,pktsize);
+-                sys->send(i,pkt,pktsize);
++            if(ptcl==P_DV){
++                unsigned short pktsize,ID;
++                char* pkt;
++                for(int i=0;i<porttable.size();i++){
++                    if(!porttable.port2ID(i,ID))
++                        continue;
++                    pkt=(char*)fwdtable.make_pkt_DV(ID,pktsize);
++                    sys->send(i,pkt,pktsize);
++                }
++            }
++            else{
++                //ptcl == LS
++                //increase series number,regenerate shortest path, make LS packet, send to all ports==================================================
++                fwdtable.SP_regenerate();
++
+             }
+         }
+         break;
+@@ -134,24 +168,39 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
+         //if received pong message
+         unsigned short fromID;
+         unsigned int dly,useddly;
++        bool port_changed=false;
+         if(porttable.get_delay(port,useddly)){
+             //there used to be a record, store useddly
+             porttable.analysis_pong(port,packet,sys->time(),fromID,dly);
++            if(dly!=useddly)
++                port_changed=true;
+         }
+         else{
+             //there is no useddly
+             porttable.analysis_pong(port,packet,sys->time(),fromID,dly);
+             useddly=dly;
++            port_changed=true;
+         }
+-        if(fwdtable.try_update(fromID,dly,useddly,fromID)){
+-            //if fwdtable has changed, send DV to all ports
+-            unsigned short pktsize,ID;
+-            char* pkt;
+-            for(int i=0;i<porttable.size();i++){
+-                if(!porttable.port2ID(i,ID))
+-                    continue;
+-                pkt=(char*)fwdtable.make_pkt_DV(ID,pktsize);
+-                sys->send(i,pkt,pktsize);
++        if(ptcl==P_DV){
++            if(fwdtable.try_update(fromID,dly,useddly,fromID)){
++                //if fwdtable has changed, send DV to all ports
++                unsigned short pktsize,ID;
++                char* pkt;
++                for(int i=0;i<porttable.size();i++){
++                    if(!porttable.port2ID(i,ID))
++                        continue;
++                    pkt=(char*)fwdtable.make_pkt_DV(ID,pktsize);
++                    sys->send(i,pkt,pktsize);
++                }
++            }
++        }
++        else{
++            //ptcl == P_LS
++            if(port_changed){
++                //if port changed, try_update_LS, regenerate shortest path, make LS packet and send to all port==================================
++
++                fwdtable.SP_regenerate();
++
+             }
+         }
+         free(packet);
+@@ -179,6 +228,15 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
+         }
+     free(packet);
+     }
++    else if(t==4){
++        //else if(!strcmp(sPacketType[t],"LS")){
++        //if received LS message
++        //fwdtable.analysis_DV() return whether need to flood this DV message, if so, flood DV message=======================================================================
++
++        fwdtable.SP_regenerate();
++
++        free(packet);
++    }
+     else if(t==0){
+     //else if(!strcmp(sPacketType[t],"DATA")){
+         //if received DATA message
+diff --git a/RoutingProtocolImpl.h b/RoutingProtocolImpl.h
+index 807ca4e..9d6653e 100644
+--- a/RoutingProtocolImpl.h
++++ b/RoutingProtocolImpl.h
+@@ -5,7 +5,7 @@
+ #include "fwdtable.h"
+ #include "porttable.h"
+ 
+-enum AlarmType{periodic_DV,periodic_PING,one_sec_check};
++enum AlarmType{periodic_DV,periodic_PING,one_sec_check,periodic_LS};
+ 
+ class RoutingProtocolImpl : public RoutingProtocol {
+   public:
+diff --git a/fwdtable.cc b/fwdtable.cc
+index 8120f46..ea856df 100644
+--- a/fwdtable.cc
++++ b/fwdtable.cc
+@@ -298,3 +298,43 @@ int FwdTable::size()
+ {
+     return fwd_table.size();
+ }
++
++/*@
++  @ increase the series num by 1
++  @*/
++void FwdTable::inc_series_num()
++{
++    seriesNum++;
++}
++
++/*@
++  @ set series num to zero
++  @*/
++void FwdTable::set_series_num_zero()
++{
++    seriesNum=0;
++}
++
++/*@
++  @ check on 1 sec period, remove the outdated entry (timestamp larger than 15), return whether changed
++  @*/
++bool FwdTable::check_LS()
++{
++    bool changed=false;
++    queue<int> clear_vec;
++    for(hash_map<int, vector<FwdEntry> >::iterator it=fwd_table.begin(); it!=fwd_table.end(); it++){
++        if(!(*it).second.empty()){
++            if((*it).second.at(0).time_stamp>MAX_LS_TIMESTAMP){
++                //fwd_table.erase((*it).first);
++                clear_vec.push((*it).first);
++            }
++        }
++    }
++    while(!clear_vec.empty()){
++        int entry_num=clear_vec.front();
++        fwd_table.erase(entry_num);
++        clear_vec.pop();
++        //changed=true;
++    }
++    return changed;
++}
+diff --git a/fwdtable.h b/fwdtable.h
+index c1efb63..d26fa1d 100644
+--- a/fwdtable.h
++++ b/fwdtable.h
+@@ -4,6 +4,8 @@
+ #include "global.h"
+ 
+ #define MAX_DV_TIMESTAMP 45
++#define MAX_LS_TIMESTAMP 45
++
+ 
+ 
+ //this is borrowed from event.cc
+@@ -26,19 +28,26 @@ public:
+     void set_router_id(unsigned short router_id);
+     void set_protocol(eProtocolType protocol);
+     bool check_DV();       //check on 1 sec period, remove the outdated entry (timestamp larger than 15), return whether changed
++    bool check_LS();       //check on 1 sec period, remove the outdated entry (timestamp larger than 15), return whether changed
+     void inc_tstamp_DV();  //increase timestamps of all valid entries by 1
++    void inc_tstamp_LS();  //increase timestamps of all valid entries by 1
+     bool analysis_DV(void *packet, unsigned short size, unsigned int delay);  //analyse DV packet if do any update, return true, else return false
+-    bool analysis_LS(unsigned short fromID, void *packet, unsigned short size);  //analyse LS packet
++    bool analysis_LS(void *packet, unsigned short size);  //analyse LS packet, return whether need to flood this message
+     void* make_pkt_DV(unsigned short toID, unsigned short& pktsize);        //make the DV packet
+-    void* make_pkt_LS();        //make the LS packet
++    void* make_pkt_LS(unsigned short& pktsize);        //make the LS packet
+     //FwdEntry retrieve(unsigned short destID);       //retrieve the entry corresponding to certain dest router
+     bool try_update(unsigned short desID, unsigned int cst, unsigned int usedcst, unsigned short nextHop);     //try to update one entry, used when pong received
++    bool try_update_LS(unsigned short toID,unsigned int cst);   //try to update LS table, return whether changed
+     bool analysis_data(void *packet, unsigned short size, unsigned short &nextID);
+     int size();//return the size of the hashmap
++    bool SP_regenerate();   //regenerate the shortest path algorithm
++    void inc_series_num();       //increase series num by 1
++    void set_series_num_zero();       //set series num to 0
+ private:
+     eProtocolType ptcl;
+     hash_map<int, vector<FwdEntry> > fwd_table;
+     unsigned short id;
++    short int seriesNum;    //this series number is used when using LS protocols
+ };
+ 
+ #endif // FWDTABLE_H
