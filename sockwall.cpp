@@ -299,18 +299,22 @@ char* SockWall::handlePkt_recv(int recv_size, int &return_size)
         case begin:{
         //std::cout<<"pkt type is begin"<<std::endl;
             //if this is the first pkt containing file name, open output file
-        std::string file_name(swap_buf+HEADER_LEN);
-        file_name.append(".recv");
-        file.open(file_name.c_str(),std::fstream::out);
+	  int idx=findWinBySeq();
+	  if(idx==0){
+	    std::string file_name(swap_buf+HEADER_LEN);
+	    file_name.append(".recv");
+	    file.open(file_name.c_str(),std::fstream::out);
             if(!file.is_open()){
                 //if fail to open the file, exit
                 std::cout<<"Err:cannot open the output file"<<std::endl;
                 exit(-1);
             }
             window[0].setWinType(normal);
+	    window[0].setStat(empty);
             window[0].updateSeqNum();
             min_seq_idx=1;
             tryWriteFile();
+	  }
             //try to write all the window after 0
             break;
         }
