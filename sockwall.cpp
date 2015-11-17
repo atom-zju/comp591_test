@@ -78,7 +78,7 @@ int SockWall::loadWin()
         if(window[idx].getStat()==empty && wall_stat==working){
             //find an empty window, fill it with file content
             std::cout<<"Loading window ["<<window[idx].getSeqNum()<<"]"<<std::endl;
-            getchar();
+            //getchar();
             file.read(window[idx].getDataPtr()+HEADER_LEN,PKT_SIZE-HEADER_LEN);
 
 	    std::streamsize size= file.gcount();
