@@ -78,7 +78,7 @@ int SockWall::loadWin()
         if(window[idx].getStat()==empty && wall_stat==working){
             //find an empty window, fill it with file content
             std::cout<<"Loading window ["<<window[idx].getSeqNum()<<"]"<<std::endl;
-            //getchar();
+            getchar();
             file.read(window[idx].getDataPtr()+HEADER_LEN,PKT_SIZE-HEADER_LEN);
 
 	    std::streamsize size= file.gcount();
@@ -90,19 +90,21 @@ int SockWall::loadWin()
             window[idx].setOffset(file_pos);
             window[idx].setStat(loaded);
             //file_pos+=size;
-	    file_pos=file.tellg();
+	    if(file.eof()){
+	      //reach the end of file
+	      file_pos=file_length;
+	      std::cout<<"Reaching to end of file."<<std::endl;
+	      //getchar();
+	      window[idx].setWinType(end);
+	      wall_stat=ending;
+	    }
+	    else{
+	      file_pos=file.tellg();
+	      window[idx].setWinType(normal);
+	    }
+
 	    std::cout << "file_pos:\t"<<file_pos << "\n";
 	    std::cout << "file_length:\t"<<file_length << "\n";
-            if(file_pos==file_length){
-                //if reach the end of the file
-                std::cout<<"Reaching to end of file."<<std::endl;
-                //getchar();
-                window[idx].setWinType(end);
-                wall_stat=ending;
-            }
-            else{
-                window[idx].setWinType(normal);
-            }
             window[idx].addHeader();
             loaded_cnt++;
         }
