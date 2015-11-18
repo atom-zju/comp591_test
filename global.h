@@ -5,6 +5,7 @@
 #define WIN_NUM     15
 #define TIMEOUT     500
 #define HEADER_LEN  24
+#define LAST_TRY_TIME 50
 
 //                          header format
 //    0                   1                   2                   3

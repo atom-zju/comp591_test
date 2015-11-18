@@ -125,7 +125,7 @@ int SockWall::loadWin()
 			    //if is the very last pkt to be retransmitted, count time, if larger than 10, terminate
 			    static int last_pkt_rexmit_time =0;
 			    last_pkt_rexmit_time++;
-			    if(last_pkt_rexmit_time > 10)
+			    if(last_pkt_rexmit_time > LAST_TRY_TIME)
 			      finished = true;
 			  }
             }
@@ -181,6 +181,15 @@ int SockWall::handlePkt(char *pkt, int size)
         //packet too short, fail to parse
         return -1;
     }
+    //check validality using checksum
+    swap_buf = pkt;
+    contentLen = size-HEADER_LEN;
+    if(!checkValid()){
+      //if pkt is mangled, discard
+      std::cout<<"ACK PKT is mangled, discard."<<std::endl;
+      return -1;
+    }
+
     if(*(pkt)==2){
         //if it is an ending pkt
         finished=true;
@@ -379,7 +388,11 @@ char* SockWall::make_ACK_Pkt(int &return_size)
     //fill ack number
     *((unsigned int*)swap_buf+3) = window[min_seq_idx].getSeqNum();
 
-    //////////////////////////////////////////////////////////////////// fill in checksum
+    // fill in checksum
+    uLong crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, (const Bytef*)swap_buf, HEADER_LEN-sizeof(uLong));
+    crc = crc32(crc, (const Bytef*)(swap_buf+HEADER_LEN),0);
+    *((uLong*)swap_buf+2) = crc;
 
     return_size = HEADER_LEN;
 
