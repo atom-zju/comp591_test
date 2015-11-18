@@ -121,6 +121,13 @@ int SockWall::loadWin()
                 //if timeout, reset to loaded status
                 window[idx].setStat(loaded);
                 loaded_cnt++;
+			  if(window[idx].getWinType()==end){
+			    //if is the very last pkt to be retransmitted, count time, if larger than 10, terminate
+			    static int last_pkt_rexmit_time =0;
+			    last_pkt_rexmit_time++;
+			    if(last_pkt_rexmit_time > 10)
+			      finished = true;
+			  }
             }
         }
     }
