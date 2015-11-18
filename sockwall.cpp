@@ -260,7 +260,8 @@ bool SockWall::tryWriteFile()
     //getchar();
     //for(j=0,idx=min_seq_idx;j<i;idx=(idx+1)%WIN_NUM,j++){
          //write the content to file
-        if((unsigned int)file.tellg()+1!=window[idx].getOffest()){
+      unsigned int window_offset = file.tellp();
+        if(window_offset != window[idx].getOffest()){
             std::cout<<"Err:offset cannot match, file might incorrect."<<std::endl;
             //getchar();
         }
@@ -336,6 +337,7 @@ char* SockWall::handlePkt_recv(int recv_size, int &return_size)
                     //if find a corresponding window, deliver it by swapping the pointer
                     std::cout<<"loaded window ["<<window[idx].getSeqNum()<<"]"<<std::endl;
                     //getchar();
+		    window[idx].setOffset(*((unsigned int*)swap_buf+1));
                     deliverPkt2Win(idx);
                     if(win_t==end){
                         window[idx].setWinType(end);
