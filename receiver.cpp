@@ -73,7 +73,8 @@ int main(int argc, char** argv)
 //        printf("%.*s",recv_size-HEADER_LEN,pkt_handle+HEADER_LEN);
 	
         pkt_handle = sock_wall.handlePkt_recv(recv_size,return_size);
-
+	if(pkt_handle == NULL)
+	  continue;
         cout<<"start to sendto()"<<endl;
         sendto(sock,pkt_handle,return_size,0,(struct sockaddr *)&remaddr,addrlen);
     }

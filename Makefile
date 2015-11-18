@@ -2,6 +2,7 @@
 CC = g++
 CFLAGS = -Wall -c -g
 LFLAGS =
+Libs = -lz
 
 RECV = receiver
 SEND = sender
@@ -16,10 +17,10 @@ SEND_OBJ = sender.o sockwall.o sockwindow.o
 all :  $(RECV) $(SEND)
 
 $(RECV) : $(RECV_OBJ)
-	$(CC) $(LFLAGS) -o $(RECV) $(RECV_OBJ)
+	$(CC) $(LFLAGS) $(Libs) -o $(RECV) $(RECV_OBJ)
 
 $(SEND) : $(SEND_OBJ)
-	$(CC) $(LFLAGS) -o $(SEND) $(SEND_OBJ)
+	$(CC) $(LFLAGS) $(Libs) -o $(SEND) $(SEND_OBJ)
 
 $(SEND_OBJS): global.h
 

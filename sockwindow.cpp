@@ -4,7 +4,7 @@
 #include "global.h"
 #include <stdio.h>
 #include <string>
-
+#include <zlib.h>
 
 SockWindow::SockWindow():seq_num(),offset(0),win_stat(empty)
 {
@@ -97,7 +97,11 @@ void SockWindow::addHeader()
     //fill seq
     *((unsigned int *)pkt_p+2) = (unsigned int) seq_num;
 
-    //fill in checksum //////////////////////////////////////////////////////////////////////////////////
+    //fill in checksum
+    uLong crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, (const Bytef*)pkt_p ,HEADER_LEN-sizeof(uLong));
+    crc = crc32(crc, (const Bytef*)(pkt_p+HEADER_LEN),content_size);
+    *((uLong*)pkt_p+2) = crc;
 
 }
 

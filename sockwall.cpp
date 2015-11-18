@@ -4,7 +4,7 @@
 #include <string>
 #include <string.h>
 #include <stdio.h>
-
+#include <zlib.h>
 
 SockWall::SockWall(const char* file_path, WallType wt):min_seq_idx(0),file_pos(0), wall_stat(working),finished(false),wall_type(wt),seq_num(0)
 {
@@ -220,11 +220,15 @@ char* SockWall::getRecvBuf()
 
 bool SockWall::checkValid()
 {
-    //first check the length
-    if(contentLen<HEADER_LEN)
-        return false;
 
-    //////////////////////////////////////////// check validility using checksum or md5
+    // check validility using checksum
+    uLong crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, (const Bytef*)swap_buf, HEADER_LEN-sizeof(uLong));
+    crc = crc32(crc, (const Bytef*)(swap_buf+HEADER_LEN),contentLen);
+    if(*((uLong*)swap_buf+2) != crc){
+      //chesum fail, return false
+      return false;
+    }
     return true;
 }
 
@@ -289,10 +293,14 @@ char* SockWall::handlePkt_recv(int recv_size, int &return_size)
         std::cout<<"Err: sender cannot call handlePkt_recv."<<std::endl;
         return NULL;
     }
-
-    contentLen=recv_size;
+    //first check the length
+    if(recv_size<HEADER_LEN)
+        return NULL;
+    contentLen=recv_size-HEADER_LEN;
     if(!checkValid()){
         //if pkt is mangled, discard
+      std::cout<<"PKT is mangled, discard."<<std::endl;
+      return NULL;
     }
     //determine pkt type can be name, content, end
     WinType win_t;
