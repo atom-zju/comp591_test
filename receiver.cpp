@@ -4,7 +4,8 @@
 #include <string>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "sockwall.h"
+//#include "sockwall.h"
+#include "global.h"
 #include <stdio.h>
 
 using namespace std;
@@ -17,7 +18,7 @@ int main(int argc, char** argv)
     struct sockaddr_in remaddr;
     socklen_t addrlen = sizeof(remaddr); /* length of addresses */
     char* pkt_handle;
-    //char read_buf[PKT_SIZE];
+    char read_buf[PKT_SIZE];
 
     //check input arguments
     if(argc!=3){
@@ -61,22 +62,37 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
-    SockWall sock_wall(0,receiver);
-    while(!sock_wall.isFinished()){
-        pkt_handle = sock_wall.getRecvBuf();
-        int recv_size,return_size;
+    //SockWall sock_wall(0,receiver);
+    int mangled_cnt=0;
+    for(int i=0;i<10000;i++){
+        //pkt_handle = sock_wall.getRecvBuf();
+        int recv_size; //return_size;
 
-        cout<<"start to recvfrom()"<<endl;
-        recv_size = recvfrom(sock,pkt_handle,PKT_SIZE,0,(struct sockaddr *)&remaddr,&addrlen);
-//        std::cout<<"==================================\n"<<"Recv Size:"<<recv_size<<std::endl;
-//        std::cout<<"Recv Content:\n"<<"=================================="<<std::endl;
-//        printf("%.*s",recv_size-HEADER_LEN,pkt_handle+HEADER_LEN);
-	
-        pkt_handle = sock_wall.handlePkt_recv(recv_size,return_size);
-	if(pkt_handle == NULL)
-	  continue;
-        cout<<"start to sendto()"<<endl;
-        sendto(sock,pkt_handle,return_size,0,(struct sockaddr *)&remaddr,addrlen);
+        //cout<<"start to recvfrom()"<<endl;
+        recv_size = recvfrom(sock,read_buf,PKT_SIZE,0,(struct sockaddr *)&remaddr,&addrlen);
+        //std::cout<<"==================================\n"<<"Recv Size:"<<recv_size<<std::endl;
+        //std::cout<<"Recv Content:\n"<<"=================================="<<std::endl;
+        //printf("%.*s\n",recv_size,read_buf);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        std::cout<<"pkt id: "<<*((int*)read_buf)<<endl;
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //bool mangled = false;
+        //for(int idx=0;idx<PKT_SIZE;idx++){
+        //    if(read_buf[idx]!='-'){
+        //        mangled = true;
+        //        break;
+        //    }
+        //}
+        //if(mangled){
+        //    mangled_cnt++;
+        //}
+        cout<<<<i<<" packets arrived"<<endl;
+        //pkt_handle = sock_wall.handlePkt_recv(recv_size,return_size);
+//	if(pkt_handle == NULL)
+//	  continue;
+//        cout<<"start to sendto()"<<endl;
+//        sendto(sock,pkt_handle,return_size,0,(struct sockaddr *)&remaddr,addrlen);
     }
+    //cout<<mangled_cnt<<" out of 10000 packets has been mangled"<<endl;
     return 0;
 }

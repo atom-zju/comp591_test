@@ -4,7 +4,8 @@
 #include <string>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "sockwall.h"
+//#include "sockwall.h"
+#include "global.h"
 
 using namespace std;
 
@@ -77,63 +78,73 @@ int main(int argc, char** argv)
         exit(-1);
     }
 
+    // fill the read buf with content
+    memset (read_buf,'-',PKT_SIZE);
+    
+    for(int i=0;i<10000;i++){
+        //////////////////////////////////////////////////////////////////////////////////////////////////////
+        *((int *)read_buf) = i;
+        //////////////////////////////////////////////////////////////////////////////////////////////////////
+        //cout<<"sending "<<i<<" th packet."<<endl;
+        sendto(sock,read_buf,PKT_SIZE,0,(struct sockaddr *)&sin,addrlen);
+    }
 
 
     //create sockwall
-    SockWall sock_wall(file_path.c_str(),sender);
-
-
-    while(!sock_wall.isFinished()){
-
-        FD_ZERO (&read_set); /* clear everything */
-        FD_ZERO (&write_set); /* clear everything */
-
-        //put sock into read set
-        FD_SET (sock, &read_set);
-
-        //load date to windows, return # of pending window
-        int pending_win=sock_wall.loadWin();
-        if(pending_win>0){
-            //if there are windows pending to be sent, put sock into write set
-            FD_SET (sock, &write_set);
-        }
-
-        //define timeout for select func
-        time_out.tv_usec = 100000; /* 1-tenth of a second timeout */
-        time_out.tv_sec = 0;
-
-        //select
-        select_retval = select(sock+1, &read_set, &write_set, NULL, &time_out);
-
-        if(select_retval<0){
-            cout<<"Err: select fail"<<endl;
-            exit(-1);
-        }
-
-        if(select_retval==0){
-            //nothing to do, continue
-            continue;
-        }
-
-        //if sock has something to read
-        if(FD_ISSET(sock, &read_set)){
-            cout<<"start to recvfrom()"<<endl;
-            int recv_size = recvfrom(sock,read_buf,PKT_SIZE,0,(struct sockaddr *)&sin,&addrlen);
-            sock_wall.handlePkt(read_buf,recv_size);
-        }
-
-        //if sock has something to write
-        if(FD_ISSET(sock, &write_set)){
-            for(int i=0;i<pending_win;i++){
-                int send_size;
-                int win_idx = sock_wall.makePkt(send_pkt,send_size);
-                cout<<"start to sendto()"<<endl;
-                sendto(sock,send_pkt,send_size,0,(struct sockaddr *)&sin,addrlen);
-                sock_wall.setStatSent(win_idx);
-            }
-        }
-
-    }
+//    SockWall sock_wall(file_path.c_str(),sender);
+//
+//
+//    while(!sock_wall.isFinished()){
+//
+//        FD_ZERO (&read_set); /* clear everything */
+//        FD_ZERO (&write_set); /* clear everything */
+//
+//        //put sock into read set
+//        FD_SET (sock, &read_set);
+//
+//        //load date to windows, return # of pending window
+//        int pending_win=sock_wall.loadWin();
+//        if(pending_win>0){
+//            //if there are windows pending to be sent, put sock into write set
+//            FD_SET (sock, &write_set);
+//        }
+//
+//        //define timeout for select func
+//        time_out.tv_usec = 100000; /* 1-tenth of a second timeout */
+//        time_out.tv_sec = 0;
+//
+//        //select
+//        select_retval = select(sock+1, &read_set, &write_set, NULL, &time_out);
+//
+//        if(select_retval<0){
+//            cout<<"Err: select fail"<<endl;
+//            exit(-1);
+//        }
+//
+//        if(select_retval==0){
+//            //nothing to do, continue
+//            continue;
+//        }
+//
+//        //if sock has something to read
+//        if(FD_ISSET(sock, &read_set)){
+//            cout<<"start to recvfrom()"<<endl;
+//            int recv_size = recvfrom(sock,read_buf,PKT_SIZE,0,(struct sockaddr *)&sin,&addrlen);
+//            sock_wall.handlePkt(read_buf,recv_size);
+//        }
+//
+//        //if sock has something to write
+//        if(FD_ISSET(sock, &write_set)){
+//            for(int i=0;i<pending_win;i++){
+//                int send_size;
+//                int win_idx = sock_wall.makePkt(send_pkt,send_size);
+//                cout<<"start to sendto()"<<endl;
+//                sendto(sock,send_pkt,send_size,0,(struct sockaddr *)&sin,addrlen);
+//                sock_wall.setStatSent(win_idx);
+//            }
+//        }
+//
+//    }
 
     return 0;
 }

@@ -1,7 +1,7 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-#define PKT_SIZE    64000
+#define PKT_SIZE    1640
 #define WIN_NUM     15
 #define TIMEOUT     500
 #define HEADER_LEN  24
