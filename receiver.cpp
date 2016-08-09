@@ -86,7 +86,7 @@ int main(int argc, char** argv)
         //if(mangled){
         //    mangled_cnt++;
         //}
-        cout<<<<i<<" packets arrived"<<endl;
+        cout<<i<<" packets arrived"<<endl;
         //pkt_handle = sock_wall.handlePkt_recv(recv_size,return_size);
 //	if(pkt_handle == NULL)
 //	  continue;
